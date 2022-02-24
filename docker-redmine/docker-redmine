@@ -1,0 +1,70 @@
+FROM ubuntu:20.04
+
+#add some info about the image
+LABEL maintainer="transer@gmail.com"
+LABEL build_date="2022-02-20"
+
+#update repository info, then install and set timezone
+RUN apt update && apt install -y tzdata
+ENV TZ="America/New_York"
+
+#install nginx
+RUN apt install -y nginx
+
+#install ruby 
+RUN apt install -y ruby-full
+
+#install dependencies for passenger and nginx
+RUN apt install -y dirmngr gnupg apt-transport-https ca-certificates software-properties-common
+
+#add repository for passenger
+RUN apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 561F9B9CAC40B2F7
+RUN add-apt-repository 'deb https://oss-binaries.phusionpassenger.com/apt/passenger focal main' && apt update
+
+#install passenger
+RUN apt install -y libnginx-mod-http-passenger
+
+#install redmine dependencies
+RUN apt install -y build-essential libmysqlclient-dev imagemagick libmagickwand-dev
+
+#download and install redmine
+ADD redmine.tar.gz /opt/
+RUN mv /opt/redmine-4.1.5 /opt/redmine
+
+#copy nginx configuration file and generate symbolic link in sites-enabled
+RUN ls
+COPY example.com.conf /etc/nginx/sites-available/
+RUN ln -s /etc/nginx/sites-available/example.com.conf /etc/nginx/sites-enabled/
+
+#copy redmine configuration file
+COPY database.yml /opt/redmine/config/
+
+#install additional dependencies
+RUN gem install bundler 
+#RUN bundle install
+
+#generate keys and migrate database
+#RUN bundle exec rake generate_secret_token && RAILS_ENV=production bundle exec rake db:migrate
+
+#set permissions on redmine files
+RUN chown -R www-data: /opt/redmine
+
+#open up port 8080, redmine default port
+EXPOSE 8080
+
+#start nginx
+CMD ["nginx", "-g", "daemon off;"]
+
+
+
+
+
+
+
+
+
+
+
+
+
+

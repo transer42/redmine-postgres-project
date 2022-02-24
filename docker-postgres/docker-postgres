@@ -1,0 +1,38 @@
+
+#latest ubuntu 
+FROM ubuntu:impish-20220128 
+
+#add some info about the image
+LABEL maintainer="transer@gmail.com"
+LABEL build_date="2022-02-20"
+
+#update repository info, then install and set timezone
+RUN apt update && apt install tzdata -y
+ENV TZ="America/New_York"
+
+#install postgresql
+RUN apt-get install -y postgresql-13
+
+#create postgresql user account
+USER postgres
+
+#create redmine role
+#plaintext stored password is BAD, but without a secrets db, haven't found alternate option
+RUN    /etc/init.d/postgresql start &&\
+    psql --command "CREATE ROLE redmine LOGIN ENCRYPTED PASSWORD 'my_password' NOINHERIT VALID UNTIL 'infinity';" &&\ 
+    psql --command "CREATE DATABASE redmine WITH ENCODING='UTF8' OWNER=redmine;;"
+
+#make remote connections possible
+#LIMIT TO PRIVATE SUBNET
+RUN echo "host all  all    0.0.0.0/0  md5" >> /etc/postgresql/13/main/pg_hba.conf
+RUN echo "listen_addresses='*'" >> /etc/postgresql/13/main/postgresql.conf
+
+#expose the postgresql port
+EXPOSE 5432
+
+#Normally would add a persistent volume of some sort for database
+#Skipping for this exercise because of unknown environment
+
+#start postgres
+CMD ["/usr/lib/postgresql/13/bin/postgres", "-D", "/var/lib/postgresql", "-c", "config_file=/etc/postgresql/13/main/postgresql.conf"]
+
